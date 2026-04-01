@@ -112,12 +112,6 @@ Deepseek was the wild card — insanely fast token generation but weird response
 
 The takeaway: bigger does not always mean better. It depends entirely on what you are actually trying to do.
 
-## Status
-
-- [x] Phase 1 — local inference benchmarking across 3 models
-- [ ] Phase 2 — structured JSON outputs, Pydantic validation, retry logic
-- [ ] Phase 3 — model comparison report, charts, temperature variance analysis
-
 ## Tech Stack
 
 | Component | Tool |
