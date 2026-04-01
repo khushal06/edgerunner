@@ -119,11 +119,16 @@ Deepseek was fast but messy. Great at generating text quickly but bad at followi
 
 Temperature matters more than I expected. At 0.7 even llama3.2 needed a retry to produce valid JSON. At 0.0 it passed every time. In any production system that needs consistent outputs always use temperature 0.
 
-## Project Status
+## Project Architecture
 
-- [x] Phase 1 — benchmark 3 models across 90 inferences
-- [x] Phase 2 — JSON validation, retry logic, temperature testing
-- [x] Phase 3 — charts and model comparison report
+### Phase 1 — Local Inference Benchmarking
+Run 3 models offline across 90 inferences. Measure time to first token, total latency, and tokens per second. Save everything to CSV.
+
+### Phase 2 — Structured Outputs + Reliability
+Force models to respond in strict JSON. Validate with Pydantic. Auto-retry on invalid output. Test temperature 0.0 vs 0.7 to document variance.
+
+### Phase 3 — Analysis + Visualization
+Load CSV results into pandas. Generate 4 charts comparing models across speed, latency, and category performance. Print full technical report.
 
 ## Files
 ```
