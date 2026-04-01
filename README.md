@@ -1,74 +1,68 @@
-# Edgerunner — Local AI Model Benchmarking Tool
+# Edgerunner — Local AI Benchmarking Tool
 
-A production-grade benchmarking tool that runs multiple open-source AI models completely offline, measures their performance across 90 inferences, and produces a data-driven report to help teams decide which model to use based on their specific needs.
+I got tired of everyone just defaulting to GPT-4 without asking if they actually need it. So I built a tool that runs 3 AI models completely offline on my laptop, tests them on the same 30 questions, and tells you with real numbers which one to use and when.
 
-## The Problem
+No API keys. No cloud. No cost. Just models running on my machine.
 
-Most engineers default to GPT-4 or Claude without asking a simple question — do we actually need this? In the real world there are four constraints that make local models the only option:
+## Why I Built This
 
-- **Privacy** — You cannot send sensitive data to an external API. Medical records, financial documents, legal contracts — none of it should leave your network.
-- **Latency** — Network roundtrips add unpredictable delays. Local inference is deterministic.
-- **Cost** — API costs scale with usage. At production scale, paying per token gets expensive fast.
-- **Connectivity** — Edge deployments, air-gapped environments, and offline scenarios have no internet access at all.
+There are situations where you literally cannot use ChatGPT or Claude:
 
-Most candidates have zero hands-on experience with these constraints. This project fixes that.
+- A hospital cannot send patient data to OpenAI
+- A bank cannot send financial records to an external server
+- An app deployed in a remote area has no internet connection
+- A startup paying $500/month in API costs needs a cheaper option
 
-## What I Built
+Most people in AI have never dealt with any of these constraints hands-on. I wanted to actually understand them, not just read about them.
 
-A CLI benchmarking tool that:
-1. Runs 3 open-source models completely offline on local hardware
-2. Tests each model on 30 standardized prompts across 6 categories
-3. Measures time to first token, total latency, and tokens per second for every inference
-4. Saves all results to CSV for analysis
-5. Produces a summary showing exactly which model wins for which use case
+## What I Did
 
-## What Is Actually Happening
+I pulled 3 open-source models once using Ollama. After that everything ran completely offline — no internet needed, no data left my machine.
 
-When you run this tool, here is what happens step by step:
+I benchmarked all 3 models across 90 total inferences — 30 prompts each, covering factual questions, reasoning, coding, summarization, creative writing, and analytical thinking.
 
-1. Ollama loads the model into your Mac's memory (no internet needed)
-2. Each prompt is sent to the model one at a time
-3. The model streams its response token by token
-4. The tool measures how long until the first token arrives (time to first token) and how fast tokens are generated (tokens per second)
-5. Every result is logged to a CSV file
-6. A summary table is printed showing average performance per model
+For every single inference I measured:
+- How long until the first word appeared (time to first token)
+- How long the full response took (total latency)
+- How fast the model was generating (tokens per second)
 
-## Benchmark Results
+Then I saved everything to a CSV and analyzed the results.
 
-These numbers were recorded on a MacBook Pro running all models locally with no internet connection:
+## The Results
 
-| Model | Time to First Token | Total Latency | Tokens/sec |
+Models were downloaded once — all inference ran fully offline after that:
+
+| Model | First Word | Full Response | Speed |
 |---|---|---|---|
-| deepseek-r1:1.5b | 0.21s | 9.83s | 67.29 |
-| llama3.2 | 0.27s | 3.49s | 35.65 |
-| llama3 | 0.78s | 21.33s | 10.54 |
+| deepseek-r1:1.5b | 0.21s | 9.83s | 67 tokens/sec |
+| llama3.2 | 0.27s | 3.49s | 35 tokens/sec |
+| llama3 | 0.78s | 21.33s | 10 tokens/sec |
 
-### What These Numbers Mean
+### What this actually means
 
-- **llama3.2 wins on total latency** — fastest end-to-end response at 3.49s average. Best for real-time applications where the user is waiting.
-- **deepseek-r1:1.5b wins on tokens/sec** — generates 67 tokens per second, 6x faster than llama3. Best for long document generation.
-- **llama3 is the quality baseline** — slowest but most thorough responses. Best for complex reasoning tasks where accuracy matters more than speed.
+**Use llama3.2 if** you need fast responses and the user is waiting. 3.49 seconds average. Solid quality. Best all-rounder.
+
+**Use deepseek-r1:1.5b if** you need to generate a lot of text fast. 67 tokens per second is insane for a model this small. Great for batch jobs.
+
+**Use llama3 if** quality is everything and speed doesn't matter. Slowest by far but most thorough answers.
+
+**Use any of them if** you care about privacy, cost, or offline access. They all run 100% locally after the initial download.
 
 ## Project Structure
 ```
 edgerunner/
 ├── src/
-│   ├── benchmark.py       # Core benchmarking engine — runs all inferences, measures latency
-│   ├── models.py          # Model configuration and management
-│   ├── validator.py       # Pydantic JSON schema validation + retry logic (Phase 2)
+│   ├── benchmark.py       # runs all inferences, measures every timing metric
 │   └── __init__.py
 ├── prompts/
-│   └── test_prompts.json  # 30 standardized prompts across 6 categories
+│   └── test_prompts.json  # 30 prompts across 6 categories
 ├── results/
-│   └── benchmark_results.csv  # Raw benchmark data from all 90 inferences
-├── main.py                # CLI entrypoint
-├── .gitignore
+│   └── benchmark_results.csv  # all 90 inference results
+├── main.py
 └── README.md
 ```
 
 ## Prompt Categories
-
-The 30 test prompts cover 6 categories to measure model performance across different task types:
 
 | Category | Count | What It Tests |
 |---|---|---|
@@ -79,58 +73,56 @@ The 30 test prompts cover 6 categories to measure model performance across diffe
 | Creative | 5 | Open-ended generation quality |
 | Analytical | 5 | Multi-point structured thinking |
 
-## Tech Stack
+## How To Run It Yourself
 
-| Component | Tool |
-|---|---|
-| Local model runner | Ollama |
-| Models benchmarked | llama3, llama3.2, deepseek-r1:1.5b |
-| Results storage | CSV via pandas |
-| Validation | Pydantic (Phase 2) |
-| Language | Python 3.11 |
-
-## Setup
-
-### 1. Install Ollama
-Download from https://ollama.com and pull the models:
+### 1. Get Ollama and pull the models
+Download from https://ollama.com then run once:
 ```bash
 ollama pull llama3
 ollama pull llama3.2
 ollama pull deepseek-r1:1.5b
 ```
+After this step you never need internet again.
 
-### 2. Clone and set up environment
+### 2. Clone and set up
 ```bash
 git clone https://github.com/saikhushaldulam/edgerunner.git
 cd edgerunner
 python -m venv .venv
 source .venv/bin/activate
-```
-
-### 3. Install dependencies
-```bash
 pip install ollama pydantic pandas matplotlib tabulate pyyaml
 ```
 
-### 4. Run the benchmark
+### 3. Run the benchmark
 ```bash
 python src/benchmark.py
 ```
+Takes around 30-40 minutes — runs 90 inferences back to back on your CPU. Grab a coffee.
 
-This runs 90 inferences (30 prompts x 3 models) and saves results to results/benchmark_results.csv. Takes approximately 30-40 minutes on a MacBook Pro.
-
-### 5. View results
+### 4. See your results
 ```bash
 cat results/benchmark_results.csv
 ```
 
-## Why This Matters For Real Engineering
+## What I Learned
 
-Model selection is a decision every AI team makes regularly. Most teams pick whatever is trending on social media. This project shows how to make that decision with data:
+The biggest surprise was llama3.2. I expected llama3 to dominate everything since it is the bigger model. But llama3.2 was 6x faster on total latency with responses that were honestly just as good for most tasks. For anything real-time, llama3 is just not worth the wait.
 
-- If you need **real-time responses** — use llama3.2 (3.49s average latency)
-- If you need **high throughput document generation** — use deepseek-r1:1.5b (67 tokens/sec)
-- If you need **maximum quality** — use llama3 and accept the latency cost
-- If you need **zero cost and zero privacy risk** — use any of them locally
+Deepseek was the wild card — insanely fast token generation but weird response patterns on some prompts. Great for throughput, not always great for quality.
 
-That is the kind of thinking that separates engineers from prompt engineers.
+The takeaway: bigger does not always mean better. It depends entirely on what you are actually trying to do.
+
+## Status
+
+- [x] Phase 1 — local inference benchmarking across 3 models
+- [ ] Phase 2 — structured JSON outputs, Pydantic validation, retry logic
+- [ ] Phase 3 — model comparison report, charts, temperature variance analysis
+
+## Tech Stack
+
+| Component | Tool |
+|---|---|
+| Local model runner | Ollama |
+| Models | llama3, llama3.2, deepseek-r1:1.5b |
+| Language | Python 3.11 |
+| Results storage | pandas + CSV |
