@@ -1,88 +1,67 @@
 # Edgerunner — Local AI Benchmarking Tool
 
-I got tired of everyone just defaulting to GPT-4 without asking if they actually need it. So I built a tool that runs 3 AI models completely offline on my laptop, tests them on the same 30 questions, and tells you with real numbers which one to use and when.
+I built a tool that tests 3 AI models on my laptop with no internet, no API keys, and zero cost. It runs 90 questions across all 3 models, measures how fast and reliable each one is, and tells you which one to use depending on what you actually need.
 
-No API keys. No cloud. No cost. Just models running on my machine.
+## The Problem
 
-## Why I Built This
+Everyone just uses ChatGPT or Claude without asking if they need to. But there are real situations where you cannot:
 
-There are situations where you literally cannot use ChatGPT or Claude:
+- A hospital cannot send patient records to OpenAI
+- A bank cannot send financial data to an external server
+- A remote app with no internet cannot call any API
+- A startup cannot afford $500/month in API costs at scale
 
-- A hospital cannot send patient data to OpenAI
-- A bank cannot send financial records to an external server
-- An app deployed in a remote area has no internet connection
-- A startup paying $500/month in API costs needs a cheaper option
-
-Most people in AI have never dealt with any of these constraints hands-on. I wanted to actually understand them, not just read about them.
+I wanted to actually understand these constraints hands-on instead of just reading about them.
 
 ## What I Did
 
-I pulled 3 open-source models once using Ollama. After that everything ran completely offline — no internet needed, no data left my machine.
+I downloaded 3 AI models once. After that everything ran 100% offline on my MacBook.
 
-I benchmarked all 3 models across 90 total inferences — 30 prompts each, covering factual questions, reasoning, coding, summarization, creative writing, and analytical thinking.
+I tested all 3 models on the same 30 questions covering 6 topics — facts, reasoning, coding, summarization, creative writing, and analysis. That's 90 total tests.
 
-For every single inference I measured:
-- How long until the first word appeared (time to first token)
-- How long the full response took (total latency)
-- How fast the model was generating (tokens per second)
+For each test I measured:
+- How long until the first word showed up
+- How long the full answer took
+- How many words it generated per second
 
-Then I saved everything to a CSV and analyzed the results.
+Then in Phase 2 I made each model respond in strict JSON format, validated it with code, and built an automatic retry if the output was broken.
 
-## The Results
+## Results
 
-Models were downloaded once — all inference ran fully offline after that:
-
-| Model | First Word | Full Response | Speed |
+| Model | First Word | Full Answer | Speed |
 |---|---|---|---|
 | deepseek-r1:1.5b | 0.21s | 9.83s | 67 tokens/sec |
 | llama3.2 | 0.27s | 3.49s | 35 tokens/sec |
 | llama3 | 0.78s | 21.33s | 10 tokens/sec |
 
-### What this actually means
+**llama3.2** — fastest full response, best for real-time use
 
-**Use llama3.2 if** you need fast responses and the user is waiting. 3.49 seconds average. Solid quality. Best all-rounder.
+**deepseek** — fastest raw generation, best for bulk tasks
 
-**Use deepseek-r1:1.5b if** you need to generate a lot of text fast. 67 tokens per second is insane for a model this small. Great for batch jobs.
+**llama3** — slowest but most detailed answers, best when quality matters most
 
-**Use llama3 if** quality is everything and speed doesn't matter. Slowest by far but most thorough answers.
+## JSON Reliability Test
 
-**Use any of them if** you care about privacy, cost, or offline access. They all run 100% locally after the initial download.
+I also forced each model to respond in structured JSON and tested how reliable they were:
 
-## Project Structure
-```
-edgerunner/
-├── src/
-│   ├── benchmark.py       # runs all inferences, measures every timing metric
-│   └── __init__.py
-├── prompts/
-│   └── test_prompts.json  # 30 prompts across 6 categories
-├── results/
-│   └── benchmark_results.csv  # all 90 inference results
-├── main.py
-└── README.md
-```
-
-## Prompt Categories
-
-| Category | Count | What It Tests |
+| Model | Strict Mode (temp 0) | Relaxed Mode (temp 0.7) |
 |---|---|---|
-| Factual | 5 | Basic knowledge retrieval accuracy |
-| Reasoning | 5 | Logic, math, deduction |
-| Coding | 5 | Python, SQL, algorithms |
-| Summarization | 5 | Concise, accurate compression |
-| Creative | 5 | Open-ended generation quality |
-| Analytical | 5 | Multi-point structured thinking |
+| llama3 | passed first try | passed first try |
+| llama3.2 | passed first try | needed 1 retry |
+| deepseek | failed completely | needed 1 retry |
 
-## How To Run It Yourself
+If your app needs structured data outputs — use llama3 or llama3.2. Deepseek is fast but unreliable for JSON.
 
-### 1. Get Ollama and pull the models
-Download from https://ollama.com then run once:
+## How To Run It
+
+### 1. Download Ollama and pull the models
+Go to https://ollama.com and install it. Then:
 ```bash
 ollama pull llama3
 ollama pull llama3.2
 ollama pull deepseek-r1:1.5b
 ```
-After this step you never need internet again.
+You only do this once. No internet needed after this.
 
 ### 2. Clone and set up
 ```bash
@@ -97,26 +76,42 @@ pip install ollama pydantic pandas matplotlib tabulate pyyaml
 ```bash
 python src/benchmark.py
 ```
-Takes around 30-40 minutes — runs 90 inferences back to back on your CPU. Grab a coffee.
+Takes 30-40 minutes. It's running 90 tests back to back on your CPU.
 
-### 4. See your results
+### 4. Run the JSON validation test
+```bash
+python src/validator.py
+```
+
+### 5. See the results
 ```bash
 cat results/benchmark_results.csv
 ```
 
 ## What I Learned
 
-The biggest surprise was llama3.2. I expected llama3 to dominate everything since it is the bigger model. But llama3.2 was 6x faster on total latency with responses that were honestly just as good for most tasks. For anything real-time, llama3 is just not worth the wait.
+llama3.2 surprised me the most. I assumed the bigger model would always win but llama3.2 was 6x faster with answers that were just as good for most questions. Size does not equal quality.
 
-Deepseek was the wild card — insanely fast token generation but weird response patterns on some prompts. Great for throughput, not always great for quality.
+Deepseek was fast but messy. Great at generating text quickly but bad at following strict formatting rules. You would not use it in a system that needs clean structured outputs.
 
-The takeaway: bigger does not always mean better. It depends entirely on what you are actually trying to do.
+Temperature matters. At 0.7 even llama3.2 needed a retry to produce valid JSON. At 0.0 it passed every time. In any production system that needs consistent outputs always use temperature 0.
 
-## Tech Stack
+## Project Status
 
-| Component | Tool |
-|---|---|
-| Local model runner | Ollama |
-| Models | llama3, llama3.2, deepseek-r1:1.5b |
-| Language | Python 3.11 |
-| Results storage | pandas + CSV |
+- [x] Phase 1 — benchmark 3 models across 90 inferences
+- [x] Phase 2 — JSON validation, retry logic, temperature testing
+- [ ] Phase 3 — charts and full technical report
+
+## Files
+```
+edgerunner/
+├── src/
+│   ├── benchmark.py    # runs all the tests and measures speed
+│   ├── validator.py    # forces JSON output and validates it
+│   └── __init__.py
+├── prompts/
+│   └── test_prompts.json   # the 30 questions used for testing
+├── results/
+│   └── benchmark_results.csv   # all 90 results saved here
+└── README.md
+```
