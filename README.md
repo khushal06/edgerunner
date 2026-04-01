@@ -17,16 +17,21 @@ I wanted to actually understand these constraints hands-on instead of just readi
 
 I downloaded 3 AI models once. After that everything ran 100% offline on my MacBook.
 
-I tested all 3 models on the same 30 questions covering 6 topics — facts, reasoning, coding, summarization, creative writing, and analysis. That's 90 total tests.
+I tested all 3 models on the same 30 questions covering 6 topics — facts, reasoning, coding, summarization, creative writing, and analysis. That is 90 total tests.
 
-For each test I measured:
-- How long until the first word showed up
-- How long the full answer took
-- How many words it generated per second
+For each test I measured how long until the first word showed up, how long the full answer took, and how many words it generated per second.
 
-Then in Phase 2 I made each model respond in strict JSON format, validated it with code, and built an automatic retry if the output was broken.
+Then in Phase 2 I made each model respond in strict JSON format, validated it with Pydantic, and built an automatic retry if the output was broken.
 
 ## Results
+
+![Tokens Per Second](results/tokens_per_sec.png)
+
+![Total Latency](results/latency.png)
+
+![Time to First Token](results/first_token.png)
+
+![Latency by Category](results/latency_by_category.png)
 
 | Model | First Word | Full Answer | Speed |
 |---|---|---|---|
@@ -40,11 +45,24 @@ Then in Phase 2 I made each model respond in strict JSON format, validated it wi
 
 **llama3** — slowest but most detailed answers, best when quality matters most
 
+## Latency by Category
+
+The most interesting finding — llama3 takes 44 seconds on coding tasks. llama3.2 does the same in 2.81 seconds.
+
+| Category | deepseek | llama3 | llama3.2 |
+|---|---|---|---|
+| coding | 18.59s | 44.86s | 2.81s |
+| factual | 8.32s | 31.73s | 2.28s |
+| reasoning | 5.92s | 14.67s | 1.95s |
+| analytical | 15.20s | 21.55s | 9.20s |
+| summarization | 5.24s | 9.88s | 1.99s |
+| creative | 5.71s | 5.31s | 2.75s |
+
 ## JSON Reliability Test
 
-I also forced each model to respond in structured JSON and tested how reliable they were:
+I forced each model to respond in strict JSON and tested how reliable they were at two temperature settings:
 
-| Model | Strict Mode (temp 0) | Relaxed Mode (temp 0.7) |
+| Model | Temp 0.0 | Temp 0.7 |
 |---|---|---|
 | llama3 | passed first try | passed first try |
 | llama3.2 | passed first try | needed 1 retry |
@@ -69,21 +87,26 @@ git clone https://github.com/saikhushaldulam/edgerunner.git
 cd edgerunner
 python -m venv .venv
 source .venv/bin/activate
-pip install ollama pydantic pandas matplotlib tabulate pyyaml
+pip install ollama pydantic pandas matplotlib tabulate pyyaml numpy
 ```
 
 ### 3. Run the benchmark
 ```bash
 python src/benchmark.py
 ```
-Takes 30-40 minutes. It's running 90 tests back to back on your CPU.
+Takes 30-40 minutes. Runs 90 tests back to back on your CPU.
 
 ### 4. Run the JSON validation test
 ```bash
 python src/validator.py
 ```
 
-### 5. See the results
+### 5. Generate charts and report
+```bash
+python src/compare.py
+```
+
+### 6. See raw results
 ```bash
 cat results/benchmark_results.csv
 ```
@@ -94,13 +117,13 @@ llama3.2 surprised me the most. I assumed the bigger model would always win but 
 
 Deepseek was fast but messy. Great at generating text quickly but bad at following strict formatting rules. You would not use it in a system that needs clean structured outputs.
 
-Temperature matters. At 0.7 even llama3.2 needed a retry to produce valid JSON. At 0.0 it passed every time. In any production system that needs consistent outputs always use temperature 0.
+Temperature matters more than I expected. At 0.7 even llama3.2 needed a retry to produce valid JSON. At 0.0 it passed every time. In any production system that needs consistent outputs always use temperature 0.
 
 ## Project Status
 
 - [x] Phase 1 — benchmark 3 models across 90 inferences
 - [x] Phase 2 — JSON validation, retry logic, temperature testing
-- [ ] Phase 3 — charts and full technical report
+- [x] Phase 3 — charts and model comparison report
 
 ## Files
 ```
@@ -108,10 +131,26 @@ edgerunner/
 ├── src/
 │   ├── benchmark.py    # runs all the tests and measures speed
 │   ├── validator.py    # forces JSON output and validates it
+│   ├── compare.py      # generates charts and prints report
 │   └── __init__.py
 ├── prompts/
 │   └── test_prompts.json   # the 30 questions used for testing
 ├── results/
-│   └── benchmark_results.csv   # all 90 results saved here
+│   ├── benchmark_results.csv
+│   ├── tokens_per_sec.png
+│   ├── latency.png
+│   ├── first_token.png
+│   └── latency_by_category.png
 └── README.md
 ```
+
+## Tech Stack
+
+| Component | Tool |
+|---|---|
+| Local model runner | Ollama |
+| Models | llama3, llama3.2, deepseek-r1:1.5b |
+| Language | Python 3.11 |
+| Results storage | pandas + CSV |
+| Validation | Pydantic v2 |
+| Charts | matplotlib |
